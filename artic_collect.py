@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 import album_sender
 import artic_to_album
 
-MAX_COUNT = 2
+MAX_COUNT = 20
 
 with open('credential') as f:
     credential = yaml.load(f, Loader=yaml.FullLoader)

@@ -4,6 +4,7 @@
 name = 'artic_to_album'
 
 from telegram_util import AlbumResult as Result
+from telegram_util import isInt
 from googletrans import Translator as TransGoogle
 trans_google = TransGoogle()
 
@@ -16,7 +17,18 @@ def getImg(soup):
     return img['data-srcset'].split(', ')[-1].split()[0]
 
 def translate(text):
-    return trans_google.translate(text, dest='zh-CN').text
+    print(text)
+    suffix = text.split(',')[-1].strip()
+    if isInt(suffix) and 1000 < int(suffix) < 2025:
+        text = text.rsplit(',', 1)[0].strip()
+    else:
+        suffix = None    
+    result = trans_google.translate(text, dest='zh-CN').text
+    if suffix:
+        result += '，' + suffix
+    print(result)
+    print('====')
+    return result
 
 def getUrl(soup):
     return soup.find('a')['href']
