@@ -4,73 +4,31 @@
 name = 'artic_to_album'
 
 from telegram_util import AlbumResult as Result
-import hanzidentifier
-from telegram_util import isCN
-from opencc import OpenCC
+from googletrans import Translator as TransGoogle
+trans_google = TransGoogle()
 
-cc = OpenCC('tw2sp')
+def getTitle(soup):
+    title = soup.find('strong', class_='title')
+    print(title)
+    return title.text
 
-def dedup(images):
-	exist = set()
-	for image in images:
-		if image in exist:
-			continue
-		if 'p32x32' in image:
-			continue
-		exist.add(image)
-		yield image
+def getImg(soup):
+    img = soup.find('img', {'data-srcset': True})
+    return img['data-srcset'].split(', ')[-1].split()[0]
 
-def getText(text, comment, link):
-	if link:
-		return text + '\n\n' + link
-	if not comment or text == comment:
-		return text
-	index = comment.find('\n\n')
-	if index == -1:
-		return text
-	comment = comment[index:].strip()
-	if len(comment) < 10:
-		return text
-	if not text:
-		return comment
-	return text + '\n\ncomment: ' + comment
-	
-def dedupText(text):
-	# fix to the library's bug
-	existing = set()
-	result = []
-	for line in text.split('\n'):
-		if not line: 
-			result.append(line)
-			continue
-		if line in existing:
-			return '\n'.join(result).strip().replace('\n\n\n', '\n\n')
-		existing.add(line)
-		result.append(line)
-	return '\n'.join(result).strip().replace('\n\n\n', '\n\n')
+def translate(text):
+    return text
+    return trans_google.translate(text, dest='zh-CN').text
 
-def shouldSimplify(text):
-	for c in text:
-		if isCN(c) and not hanzidentifier.is_simplified(c):
-			return True
-	return False
+def getUrl(soup):
+    return soup.find('a')['href']
 
-def simplify(text):
-	if shouldSimplify(text):
-		return cc.convert(text)
-	return text
-
-def get(content, setting):
+def get(soup):
     result = Result()
-    result.url = content['post_url']
-    result.video = content['video']
-    result.cap_html_v2 = simplify(dedupText(getText((content['post_text'] or '').strip(), content['shared_text'], content.get('link'))))
-    result.imgs = list(dedup(content['images'] or content['images_lowquality'] or []))
-    if result.imgs and result.imgs[0].startswith('https://m.artic.com/photo/view_full_size'):
-    	result.imgs = list(dedup(content['images_lowquality'] or []))
-    if setting.get('prefix'):
-    	result.cap_html_v2 = setting.get('prefix') + result.cap_html_v2
-    if content.get('listing_price'):
-    	result.cap_html_v2 += '\n\n【价格】%s\n【邮编】%s\n【联系】%s' % (
-    		content.get('listing_price'), content.get('listing_location'), content.get('post_url'))
+    img = getImg(soup)
+    if not img.endswith('/full/843,/0/default.jpg'):
+        return result
+    result.imgs = [img]
+    result.url = getUrl(soup)
+    cap_html_v2 = translate(getTitle(soup))
     return result
